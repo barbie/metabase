@@ -12,9 +12,9 @@ use CPAN::DistnameInfo;
 use Metabase::Archive;
 use Metabase::Index;
 use Data::GUID ();
-use JSON::XS ();
+use JSON 2 ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 $VERSION = eval $VERSION;
 
 has 'archive' => (
@@ -44,6 +44,9 @@ sub store {
         Carp::confess("GUID conflicts with an existing object");
     }
 
+    # Updated the "updated_at" timestamp
+    $fact->touch_updated_at;
+
     my $fact_struct = $fact->as_struct;
 
     # for Reports, store facts and replace content with GUID's
@@ -53,7 +56,7 @@ sub store {
       for my $f ( $fact->facts ) {
         push @fact_guids, $self->store( $f );
       }
-      $fact_struct->{content} = JSON::XS->new->encode(\@fact_guids);
+      $fact_struct->{content} = JSON->new->encode(\@fact_guids);
     }
 
     if ( $self->archive->store( $fact_struct ) 
@@ -73,11 +76,11 @@ sub extract {
     my ($self, $guid) = @_;
     my $fact;
 
-    my $fact_struct = $self->archive->extract( $guid );
+    my $fact_struct = $self->archive->extract( lc $guid );
 
     # reconstruct fact meta and extract type to find the class
     my $class = Metabase::Fact->class_from_type(
-      $fact_struct->{metadata}{core}{type}[1]
+      $fact_struct->{metadata}{core}{type}
     );
     
     # XXX: The problem here is that what we get out of the librarian isn't
@@ -86,12 +89,11 @@ sub extract {
     # following block is a wretched hack. -- rjbs, 2009-06-24
     if ($class->isa('Metabase::Report')) {
       my @facts;
-      my $content = JSON::XS->new->decode( $fact_struct->{content} );
+      my $content = JSON->new->decode( $fact_struct->{content} );
       for my $g ( @$content ) {
         # XXX no error checking if extract() fails -- dagolden, 2009-04-09
         push @facts, $self->extract( $g ); 
       }
-      my $core = $fact_struct->{metadata}{core};
 
       my $bogus_content = [ map { $_->as_struct } @facts ];
       my $bogus_string  = JSON->new->encode( $bogus_content );
@@ -110,7 +112,15 @@ sub extract {
 
 sub exists {
     my ($self, $guid) = @_;
-    return $self->index->exists( $guid );
+    return $self->index->exists( lc $guid );
+}
+
+# DO NOT lc() the GUID -- we must allow deletion of improperly cased GUIDS from source
+sub delete {
+    my ($self, $guid) = @_;
+    $self->index->delete( $guid );
+    $self->archive->delete( $guid );
+    return 1;
 }
 
 1;

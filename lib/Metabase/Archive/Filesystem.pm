@@ -12,10 +12,10 @@ use Metabase::Fact;
 use Carp ();
 use Data::GUID ();
 use File::Slurp ();
-use JSON::XS ();
+use JSON 2 ();
 use Path::Class ();
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 $VERSION = eval $VERSION;
 
 with 'Metabase::Archive';
@@ -41,7 +41,7 @@ has 'root_dir' => (
 sub store {
     my ($self, $fact_struct) = @_;
 
-    my $guid = $fact_struct->{metadata}{core}{guid}[1];
+    my $guid = $fact_struct->{metadata}{core}{guid};
     unless ( $guid ) {
         Carp::confess "Can't store: no GUID set for fact\n";
     }
@@ -50,7 +50,7 @@ sub store {
     File::Slurp::write_file( 
         $self->_guid_path( $guid ), 
         {binmode => ':raw'}, 
-        JSON::XS->new->encode($fact_struct),
+        JSON->new->encode($fact_struct),
     );
 
     return $guid;
@@ -63,7 +63,7 @@ sub extract {
     my ($self, $guid) = @_;
     
     # read the fact
-    my $fact_struct = JSON::XS->new->decode(
+    my $fact_struct = JSON->new->decode(
       File::Slurp::read_file(
         $self->_guid_path( $guid ),
         binmode => ':raw',
@@ -77,7 +77,7 @@ sub _guid_path {
     my ($self, $guid) = @_;
 
     # convert guid from "abc-def-ghi" => "abc/def" as a place to put the file
-    my $guid_path = $guid;
+    my $guid_path = lc $guid;
     $guid_path =~ s{-}{/}g;
     $guid_path =~ s{/\w+$}{};
     my $fact_path = Path::Class::file( $self->root_dir, $guid_path, $guid );

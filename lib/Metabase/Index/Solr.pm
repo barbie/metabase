@@ -22,20 +22,23 @@ sub add {
     my %metadata = (
         'core.type_s'           => $fact->type,
         'core.schema_version_i' => $fact->schema_version,
-        'core.guid_s'           => $fact->guid,
+        'core.guid_s'           => lc $fact->guid,
         'core.created_at_i'     => $fact->created_at,
     );
 
     for my $category (qw(content resource)) {
-        my $method = "$category\_metadata";
-        my $data = $fact->$method || {};
+        my $meta_method = "$category\_metadata";
+        my $types_method = "$category\_metadata_types";
+        my $data = $fact->$meta_method || {};
+        my $types = $fact->$types_method || {};
 
         for my $key ( keys %$data ) {
 
           # I'm just starting with a strict-ish set.  We can tighten or loosen
           # parts of this later. -- rjbs, 2009-03-28
             die "invalid metadata key" unless $key =~ /\A[-_a-z0-9.]+\z/;
-            my ( $type, $value ) = @{ $data->{$key} };
+            my $type  = $types->{$key};
+            my $value = $data->{$key};
             if ( $type eq '//str' ) {
                 $metadata{"$category.$key\_s"} = $value;
             } elsif ( $type eq '//num' ) {
@@ -80,7 +83,7 @@ sub search {
 sub exists {
     my ( $self, $guid ) = @_;
 
-    return scalar @{ $self->search( 'core.guid' => $guid ) };
+    return scalar @{ $self->search( 'core.guid' => lc $guid ) };
 }
 
 1;

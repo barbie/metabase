@@ -8,6 +8,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::Moose;
 
 use Test::Exception;
 use File::Temp ();
@@ -24,10 +25,10 @@ plan tests => 16;
 require_ok( 'Metabase::Index::FlatFile' );
 
 ok( my $archive = $TEST->test_archive, 'created archive' );
-isa_ok( $archive, 'Metabase::Archive::SQLite' );
+does_ok( $archive, 'Metabase::Archive' );
 
 ok( my $index = $TEST->test_index, 'created an index' );
-isa_ok( $index, 'Metabase::Index::FlatFile' );
+does_ok( $index, 'Metabase::Index' );
 
 ok( my $fact = $TEST->test_fact, "created a fact" );
 isa_ok( $fact, 'Test::Metabase::StringFact' );
@@ -35,8 +36,8 @@ isa_ok( $fact, 'Test::Metabase::StringFact' );
 ok( my $guid = $archive->store( $fact ), "stored a fact" );
 
 my $fact2 = $archive->extract($guid);
-ok ( $fact2->{metadata}{core}{guid}[1], "extracted a fact " );
-is ( $fact2->{metadata}{core}{guid}[1], $fact->guid, "extracted a fact with the same guid" );
+ok ( $fact2->{metadata}{core}{guid}, "extracted a fact " );
+is ( $fact2->{metadata}{core}{guid}, $fact->guid, "extracted a fact with the same guid" );
 
 ok( $index->add( $fact ), "indexed fact" );
 

@@ -12,14 +12,14 @@ use MooseX::Types::Path::Class;
 use Metabase::Fact;
 use Carp        ();
 use Data::GUID  ();
-use JSON::XS    ();
+use JSON 2      ();
 use Path::Class ();
 use DBI         ();
 use DBD::SQLite ();
 use Compress::Zlib qw(compress uncompress);
 use Metabase::Archive::Schema;
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 $VERSION = eval $VERSION;
 
 with 'Metabase::Archive';
@@ -62,15 +62,15 @@ has 'schema' => (
 # here assign only if no GUID already
 sub store {
     my ( $self, $fact_struct ) = @_;
-    my $guid = $fact_struct->{metadata}{core}{guid}[1];
-    my $type = $fact_struct->{metadata}{core}{type}[1];
+    my $guid = lc $fact_struct->{metadata}{core}{guid};
+    my $type = $fact_struct->{metadata}{core}{type};
 
     unless ($guid) {
         Carp::confess "Can't store: no GUID set for fact\n";
     }
 
     my $content = $fact_struct->{content};
-    my $json    = JSON::XS->new->encode($fact_struct->{metadata}{core});
+    my $json    = JSON->new->encode($fact_struct->{metadata}{core});
 
     if ( $self->compressed ) {
         $json    = compress($json);
@@ -95,7 +95,7 @@ sub extract {
     my ( $self, $guid ) = @_;
     my $schema = $self->schema;
 
-    my $fact = $schema->resultset('Fact')->find($guid);
+    my $fact = $schema->resultset('Fact')->find(lc $guid);
     return undef unless $fact;
 
     my $type    = $fact->type;
@@ -107,7 +107,7 @@ sub extract {
         $content = uncompress($content);
     }
 
-    my $meta = JSON::XS->new->decode($json);
+    my $meta = JSON->new->decode($json);
 
     # reconstruct fact meta and extract type to find the class
     my $class = Metabase::Fact->class_from_type($type);

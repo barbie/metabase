@@ -7,7 +7,7 @@
 package Metabase::Index;
 use Moose::Role;
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 $VERSION = eval $VERSION;
 
 requires 'add';
@@ -15,7 +15,7 @@ requires 'search';
 
 sub exists {
     my ($self, $guid) = @_;
-    return scalar @{ $self->search( guid => $guid ) };
+    return scalar @{ $self->search( 'core.guid' => lc $guid ) };
 }
 
 1;
@@ -63,6 +63,24 @@ must provide the C<add> and C<search> methods.
 This interface provides an C<exists> method that calls C<search()> and 
 returns a boolean value.
 
+=head2 C<search>
+
+  for $guid ( @{ $index->search( %spec ) } ) {
+    # do stuff
+  }
+
+Returns an arrayref of GUIDs satisfying the search spec.  Exact semantics
+of the search spec are still under development.  At a minimum, a list of
+key value pairs should be considered to be an "AND" operation testing
+for equality.
+
+Keys should be keys from core, content, or resource metadata.  E.g.
+
+  core.guid
+  core.type
+  core.resource
+  content.somefield
+  
 =head1 BUGS
 
 Please report any bugs or feature using the CPAN Request Tracker.  
